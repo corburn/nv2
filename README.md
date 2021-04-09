@@ -27,7 +27,7 @@ The current implementation focuses on x509 cert based signatures. Using this app
 
 ### Public Registry
 
-Public registries generally have two cateogires of content:
+Public registries generally have two categories of content:
 
 1. Public, certified content. This content is scanned, certified and signed by the registry that wishes to claim the content is "certified". It may be additionaly signed by the originating vendor.
 2. Public, community driven content. Community content is a choice for the consumer to trust (downloading their key), or accept as un-trusted.
@@ -35,7 +35,7 @@ Public registries generally have two cateogires of content:
 #### End to End Experience
 
 The user works for ACME Rockets. They build `FROM` and use certified content from docker hub.  
-Their environemt is configured to only trust content from `docker.io` and `acme-rockets.io`
+Their environment is configured to only trust content from `docker.io` and `acme-rockets.io`
 
 #### Public Certified Content
 

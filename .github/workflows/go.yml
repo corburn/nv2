@@ -16,10 +16,39 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.15
+        go-version: 1.16
+
     - name: Build
       run: make
       
+    - name: Self-signed certificate key generation
+      run: >
+        openssl req \
+          -x509 \
+          -sha256 \
+          -nodes \
+          -newkey rsa:2048 \
+          -days 365 \
+          -subj "/CN=registry.wabbit-networks.io/O=wabbit-networks inc/C=US/ST=Washington/L=Seattle" \
+          -keyout wabbit-networks.key \
+          -out wabbit-networks.crt
+
+    - name: Signing using x509
+      run: |
+        ./nv2 sign --method x509 \
+          -k wabbit-networks.key \
+          -c wabbit-networks.crt \
+          -r registry.wabbit-networks.io/net-monitor:v1 \
+          -o net-monitor_v1.signature.config.jwt \
+          file:net-monitor_v1-manifest.json
+
+    - name: Offline Verification
+      run: |
+        ./nv2 verify \
+          -f net-monitor_v1.signature.config.jwt \
+          -c wabbit-networks.crt \
+          file:net-monitor_v1-manifest.json
+
 #     - name: Build
 #       run: go build -v ./...
 
