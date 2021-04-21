@@ -11,17 +11,6 @@ Perform the following steps prior to the demo:
 - Install [Docker Desktop](https://www.docker.com/products/docker-desktop) for local docker operations
 - [Install and Build the nv2 Prerequisites](./README.md#prerequisites)
 - [Install and Build the ORAS Prototype-2 branch](https://github.com/deislabs/oras/blob/prototype-2/docs/artifact-manifest.md)
-- Edit the `~/.docker/nv2.json` file to support local, insecured registries
-  ```json
-  {
-    "enabled": true,
-    "verificationCerts": [
-    ],
-    "insecureRegistries": [
-      "registry.wabbit-networks.io"
-    ]
-  }
-  ```
 - Create an empty working directory:
   ```bash
   mkdir nv2-demo
@@ -62,11 +51,11 @@ Perform the following steps prior to the demo:
 - Wabbit Networks works with Docker Hub to get certified, to help with their customer confidence.
 - ACME Rockets will only deploy software that's been scanned and approved by the ACME Rockets security team. They know it's been approved because all approved software has been signed by the ACME Rockets security team.
 
-### Show Notary Extension
+### Show Notary Extensions
 
-To demonstrate a clean end to end experience, using the docker cli, we're using the [docker-generate][docker-generate] extension.
+To demonstrate a clean end to end experience, using the docker cli, we're using the [docker-generate][docker-generate] and [docker-nv2][docker-nv2] extensions. The extensions implement Notary v2 signing and OCI Registry persistence and discovery of artifacts.
 
-- To see the extension capabilities, review the `Management Commands:`. They include some familiar ones, like buildx, and some new ones for the Notary v2 prototype:
+- To see the extension capabilities, review the `Management Commands`. They include some familiar ones, like buildx, and some new ones for the Notary v2 prototype:
   ```bash
   docker --help
 
@@ -81,38 +70,18 @@ To demonstrate a clean end to end experience, using the docker cli, we're using 
   docker nv2 --help
   docker nv2 notary --help
   ```
+
+  The nv2 extension wraps `docker push`, _pushing both the image and its signature_, and `docker pull` to _verify signatures_ before pulling the image.
+
+- To avoid having to type `docker nv2` each time, we'll create an alias to mask over this:
+  ```bash
+  alias docker="docker nv2"
+  ```
+
 - To avoid having to type the fully qualified registry name, we'll create an environment variable:
   ```bash
   export REPO=registry.wabbit-networks.io/net-monitor
   export IMAGE=${REPO}:v1
-  ```
-  ```
-
-### Intro `nv2` Commands
-
-To achieve an proposed experience, an extension is added to implement Notary v2 signing and OCI Registry persistence and discovery of artifacts.
-
-- View Docker Extensions
-  ```bash
-  docker --help
-  ```
-- Note the Management Commands with *. Also note the `nv2` extension
-  ```bash
-  Management Commands:
-    app*        Docker App (Docker Inc., v0.9.1-beta3)
-    buildx*     Build with BuildKit (Docker Inc., v0.5.1-docker)
-    generate*   Generate artifacts (github.com/shizhMSFT, 0.1.0)
-    nv2*        Notary V2 Signature extension (Sajay Antony, Shiwei Zhang, 0.2.3)
-    scan*       Docker Scan (Docker Inc., v0.5.0)
-  ```
-  This command wraps `docker push`, _pushing both the image and its signature_, and `docker pull` to _verify signatures_ before pulling the image.
-- View nv2 commands
-  ```bash
-  docker nv2 --help
-  ```
-- To avoid having to type `docker nv2` each time, we'll create an alias to mask over this:
-  ```bash
-  alias docker="docker nv2"
   ```
 
 ## Wabbit Networks Build, Sign, Promote Process
@@ -145,13 +114,22 @@ These specific steps are product/cloud specific, so we'll assume these steps hav
 
 ### Sign and Push the Image and Signature
 
-Using the private key, we'll sign the net-monitor image. Note, we're signing the image with a registry name that we haven't yet pushed to. This enables offline signing scenarios. This is important as the image will eventually be published on `registry.wabbit-networks.io/`, however their internal staging and promotion process may publish to internal registries before promotion to the public registry.
+Using the private key, we'll sign the net-monitor image. Note, we're signing the image with a registry name that we haven't yet pushed to. This enables offline signing scenarios. This is important as the image will eventually be published on `registry.wabbit-networks.io`, however their internal staging and promotion process may publish to internal registries before promotion to the public registry.
 
 - Generate an [nv2 signature][nv2-signature], persisted locally as `net-monitor_v1.signature.config.jwt`
-
-- Enable notary, for the nv2 extension to account for signing and verification steps
+- Enable notary for the nv2 extension to account for signing and verification steps
   ```shell
   docker notary --enabled
+  ```
+- Add `registry.wabbit-networks.io` to the `~/.docker/nv2.json` insecureRegistries to support pushing to a local, insecure registry
+  ```json
+  {
+    "enabled": true,
+    "verificationCerts": [],
+    "insecureRegistries": [
+      "registry.wabbit-networks.io"
+    ]
+  }
   ```
 - Generate an [nv2 signature][nv2-signature], persisted within the `/.docker/nv2/sha256/` directory:
   ```shell
@@ -197,17 +175,15 @@ To validate an image, `docker pull` with `docker notary --enabled` will attempt 
   2021/03/02 18:34:47 none of the signatures are valid: verification failure: x509: certificate signed by unknown authority
   ```
 
-- Open the `nv2.json` configuration file:
-  ```bash
-  code ~/.docker/nv2.json
-  ```
-
-- Add the wabbit networks public key:
+- Add the wabbit networks public key to the `~/.docker/nv2.json` verificationCerts:
   ```json
   {
     "enabled": true,
     "verificationCerts": [
       "/home/[USER]/nv2-demo/wabbit-networks.crt"
+    ],
+    "insecureRegistries": [
+      "registry.wabbit-networks.io"
     ]
   }
   ```
@@ -362,7 +338,9 @@ If iterating through the demo, these are the steps required to reset to a clean 
   code ~/.docker/nv2.json
   ```
 
-[docker-generate]:        https://github.com/shizhMSFT/docker-generate
+
+[docker-generate]:        ../docker-plugins/docker-generate.md
+[docker-nv2]:             ../docker-plugins/docker-nv2.md
 [nv2-signature]:          ../signature/README.md
 [oci-image-manifest]:     https://github.com/opencontainers/image-spec/blob/master/manifest.md
 [oci-image-index]:        https://github.com/opencontainers/image-spec/blob/master/image-index.md
